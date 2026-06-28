@@ -19,6 +19,8 @@ A high-production-value, mechanic-shifting Paper/Spigot Minecraft plugin that in
 ## 🛠️ Custom Crafting Recipe
 
 The Shrink Ray can be crafted in survival mode using a standard Crafting Table with the following grid layout:
+<img width="510" height="240" alt="image" src="https://github.com/user-attachments/assets/9a2df776-537d-4cf0-a267-faa58888b5b3" />
+
 
 ```text
 [ Diamond ]    [ Eye of Ender ]    [ Diamond ]
