@@ -1,4 +1,4 @@
-# ShrinkRay ⚡
+# Shrink Ray ⚡
 
 A high-production-value, mechanic-shifting Paper/Spigot Minecraft plugin that introduces a dynamic **Shrink Ray** weapon into the game. Change player scales on the fly, execute stealth missions, or smash into battle as a heavy giant.
 
