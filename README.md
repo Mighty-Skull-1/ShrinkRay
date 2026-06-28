@@ -25,8 +25,6 @@ The Shrink Ray can be crafted in survival mode using a standard Crafting Table w
 [Redstone ]    [  Blaze Rod   ]    [Redstone ]
 [IronIngot]    [ Nether Star  ]    [IronIngot]
 
-![alt text](image.png)
-
 💻 Commands & Permissions
 /shrinkray give - Gives the executive Shrink Ray item to the user.
 
