@@ -1,0 +1,9 @@
+name: ShrinkRay
+version: 1.1.0
+author: Mighty
+main: com.shrinkray.ShrinkRay
+api-version: 1.20
+commands:
+  shrinkray:
+    description: Master command for the Shrink Ray item.
+    permission: shrinkray.admin
