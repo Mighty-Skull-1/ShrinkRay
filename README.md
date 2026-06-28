@@ -50,3 +50,11 @@ Stage, commit, and push the README straight to your repository!
 git add README.md
 git commit -m "docs: Added a comprehensive README.md file"
 git push origin main
+
+---
+
+## 🐛 Bug Reports & Feature Requests
+
+Found a bug or have a suggestion for the next update? Please report it on our official [GitHub Issue Tracker](https://github.com/Mighty-Skull-1/ShrinkRay/issues). 
+
+Before submitting, check the open issues to see if someone else has already reported it!
