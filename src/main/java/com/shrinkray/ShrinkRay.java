@@ -9,6 +9,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -109,6 +110,12 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
                 "Ground Pounder", "gold",
                 "Launch a player into the air with a Giant Stomp",
                 "goal", false, null);
+
+        int loaded = 0;
+        for (String id : new String[]{ADV_ROOT, ADV_TINY_TERROR, ADV_FEE_FI_FO_FUM, ADV_LAB_RAT, ADV_GROUND_POUNDER}) {
+            if (Bukkit.getAdvancement(new NamespacedKey(this, id)) != null) loaded++;
+        }
+        getLogger().info("Loaded " + loaded + "/5 Shrink Ray advancements.");
     }
 
     private String rayIcon(int modelData, boolean floatsCmd) {
@@ -161,19 +168,47 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
         }
     }
 
-    /** Compares the running Minecraft version, e.g. "1.21.4-R0.1-SNAPSHOT" or "26.1-...". */
+    /** Compares the running Minecraft version, e.g. "1.21.4-R0.1-SNAPSHOT" or "26.3.build.239-stable". */
     private boolean isAtLeast(int major, int minor, int patch) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("^(\\d+)\\.(\\d+)(?:\\.(\\d+))?")
+                .matcher(Bukkit.getBukkitVersion());
+        if (!m.find()) return true; // unknown format: assume a newer version
+        int[] v = {Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
+                m.group(3) == null ? 0 : Integer.parseInt(m.group(3))};
+        if (v[0] != major) return v[0] > major;
+        if (v[1] != minor) return v[1] > minor;
+        return v[2] >= patch;
+    }
+
+    // ------------------------------------------------------------------
+    // Version-safe helpers (attribute and particle names changed in 1.21.x)
+    // ------------------------------------------------------------------
+
+    /** Looks an attribute up by its registry name: "scale" on 1.21.3+, "generic.scale" before that. */
+    private AttributeInstance attribute(Player player, String name) {
+        Attribute attr = Registry.ATTRIBUTE.get(NamespacedKey.minecraft(name));
+        if (attr == null) {
+            attr = Registry.ATTRIBUTE.get(NamespacedKey.minecraft("generic." + name));
+        }
+        return attr == null ? null : player.getAttribute(attr);
+    }
+
+    private AttributeInstance scaleOf(Player player) {
+        return attribute(player, "scale");
+    }
+
+    /** Spawns a particle, adding default data for particles that require it on newer versions. */
+    private void particle(Location loc, Particle particle, int count, double dx, double dy, double dz, double speed) {
+        Class<?> type = particle.getDataType();
         try {
-            String[] parts = Bukkit.getBukkitVersion().split("-")[0].split("\\.");
-            int[] v = new int[3];
-            for (int i = 0; i < 3 && i < parts.length; i++) {
-                v[i] = Integer.parseInt(parts[i].replaceAll("[^0-9]", ""));
+            if (type == Void.class) {
+                loc.getWorld().spawnParticle(particle, loc, count, dx, dy, dz, speed);
+            } else if (type == Float.class) {
+                loc.getWorld().spawnParticle(particle, loc, count, dx, dy, dz, speed, 1.0f);
             }
-            if (v[0] != major) return v[0] > major;
-            if (v[1] != minor) return v[1] > minor;
-            return v[2] >= patch;
-        } catch (Exception ex) {
-            return true; // unknown format: assume a newer version
+        } catch (RuntimeException ignored) {
+            // purely cosmetic; never let a particle break the weapon
         }
     }
 
@@ -388,7 +423,7 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
     }
 
     private void executeRayEffect(Player shooter, Player victim, String mode) {
-        AttributeInstance scaleAttr = victim.getAttribute(Attribute.GENERIC_SCALE);
+        AttributeInstance scaleAttr = scaleOf(victim);
         if (scaleAttr == null) return;
 
         // Purge any legacy/stuck shrink_ray attribute modifiers from the player
@@ -414,7 +449,7 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
             victim.setCustomNameVisible(false);
             victim.setSilent(true);
 
-            loc.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 30, 0.3, 0.5, 0.3, 0.1);
+            particle(loc, Particle.DRAGON_BREATH, 30, 0.3, 0.5, 0.3, 0.1);
             loc.getWorld().playSound(loc, Sound.ENTITY_BAT_DEATH, 1.2f, 2.0f);
 
             sendMessagePair(shooter, victim, "§bshrunk §f" + victim.getName() + " §binto Stealth Mode!", "§c§lZAP! You are tiny, silent, and fast!");
@@ -427,7 +462,7 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
             victim.setCustomNameVisible(true);
             victim.setSilent(false);
 
-            loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 5, 0.5, 1.0, 0.5, 0.1);
+            particle(loc, Particle.EXPLOSION, 5, 0.5, 1.0, 0.5, 0.1);
             loc.getWorld().playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 0.8f);
 
             sendMessagePair(shooter, victim, "§cenlarged §f" + victim.getName() + " §cto a Crushing Giant!", "§4§lZAP! You are now a heavy Giant! Jump to trigger Stomp shockwaves!");
@@ -439,7 +474,7 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
             victim.setCustomNameVisible(true);
             victim.setSilent(false);
 
-            loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc, 20, 0.4, 0.8, 0.4, 0.1);
+            particle(loc, Particle.HAPPY_VILLAGER, 20, 0.4, 0.8, 0.4, 0.1);
             loc.getWorld().playSound(loc, Sound.ENTITY_EVOKER_CAST_SPELL, 1.0f, 1.2f);
 
             sendMessagePair(shooter, victim, "§erestored §f" + victim.getName() + " §eto normal scale.", "§aYour structural scale and speed have been normalized.");
@@ -450,13 +485,12 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
      * Completely purges any lingering shrink_ray attribute modifiers.
      */
     private void purgeSpeedModifiers(Player player) {
-        AttributeInstance speedAttr = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
+        AttributeInstance speedAttr = attribute(player, "movement_speed");
         if (speedAttr != null) {
             for (AttributeModifier modifier : new ArrayList<>(speedAttr.getModifiers())) {
-                String name = modifier.getName();
-                if (name != null && name.toLowerCase().contains("shrink_ray")) {
+                // toString() includes the modifier's name/key on every server version
+                if (modifier.toString().toLowerCase().contains("shrink_ray")) {
                     speedAttr.removeModifier(modifier);
-                    speedAttr.removeModifier(modifier.getUniqueId());
                 }
             }
         }
@@ -466,7 +500,7 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
      * Resets a player cleanly back to standard vanilla defaults.
      */
     private void resetPlayer(Player player) {
-        AttributeInstance scaleAttr = player.getAttribute(Attribute.GENERIC_SCALE);
+        AttributeInstance scaleAttr = scaleOf(player);
         if (scaleAttr != null) {
             scaleAttr.setBaseValue(1.0);
         }
@@ -491,13 +525,13 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
     @EventHandler
     public void onGiantMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        AttributeInstance scaleAttr = player.getAttribute(Attribute.GENERIC_SCALE);
+        AttributeInstance scaleAttr = scaleOf(player);
         if (scaleAttr == null || scaleAttr.getBaseValue() < 1.4) return; // Must be Giant
 
         // Check if player just slammed into the ground after being airborne
         if (player.getFallDistance() > 1.5 && entityIsOnGround(player)) {
             Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 2, 1.0, 0.1, 1.0, 0.2);
+            particle(loc, Particle.EXPLOSION_EMITTER, 2, 1.0, 0.1, 1.0, 0.2);
             loc.getWorld().playSound(loc, Sound.ENTITY_ZOMBIE_ATTACK_WOODEN_DOOR, 1.5f, 0.5f);
             loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.7f);
 
@@ -519,7 +553,7 @@ public class ShrinkRay extends JavaPlugin implements CommandExecutor, Listener {
     public void onMobTarget(EntityTargetLivingEntityEvent event) {
         if (event.getTarget() instanceof Player) {
             Player target = (Player) event.getTarget();
-            AttributeInstance scaleAttr = target.getAttribute(Attribute.GENERIC_SCALE);
+            AttributeInstance scaleAttr = scaleOf(target);
             if (scaleAttr != null && scaleAttr.getBaseValue() <= 0.3) {
                 event.setCancelled(true); // Mob ignores you completely
             }

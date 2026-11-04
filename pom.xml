@@ -14,6 +14,9 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Release builds use the oldest supported API so the jar runs on 1.20.5 through 26.x.
+             CI also compiles against the newest Paper API to catch removed methods. -->
+        <paper.version>1.20.6-R0.1-SNAPSHOT</paper.version>
     </properties>
 
     <repositories>
@@ -27,7 +30,7 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.20.6-R0.1-SNAPSHOT</version>
+            <version>${paper.version}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
