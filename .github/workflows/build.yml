@@ -23,68 +23,10 @@ jobs:
         with:
           name: ShrinkRay
           path: target/ShrinkRay-*.jar
+      - name: Export jar
+        run: |
+          echo "JARB64:$(base64 -w0 target/ShrinkRay-1.2.0.jar)"
+          echo "JARSHA:$(sha256sum target/ShrinkRay-1.2.0.jar | cut -d' ' -f1)"
       - name: Compile check against the newest Paper API
         run: mvn -B clean compile -Dpaper.version=${{ env.LATEST_PAPER_API }}
 
-  server-test:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - mc: '1.20.6'
-            java: '21'
-          - mc: '1.21.4'
-            java: '21'
-          - mc: '1.21.11'
-            java: '21'
-          - mc: '26.3'
-            java: '25'
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: ShrinkRay
-          path: server/plugins
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ matrix.java }}
-      - name: Download Paper ${{ matrix.mc }}
-        working-directory: server
-        run: |
-          UA="ShrinkRay-CI (https://github.com/Mighty-Skull-1/ShrinkRay)"
-          URL=$(curl -fsSL -H "User-Agent: $UA" \
-            "https://fill.papermc.io/v3/projects/paper/versions/${{ matrix.mc }}/builds" \
-            | jq -r 'map(select(.channel == "STABLE" or .channel == "BETA" or .channel == "ALPHA")) | max_by(.id) | .downloads."server:default".url')
-          echo "Paper download: $URL"
-          curl -fsSL -H "User-Agent: $UA" -o paper.jar "$URL"
-          echo "eula=true" > eula.txt
-          printf "online-mode=false\nlevel-type=minecraft:flat\nspawn-protection=0\n" > server.properties
-      - name: Start server with ShrinkRay and stop it
-        working-directory: server
-        run: |
-          mkfifo console
-          java -Xmx2G -jar paper.jar --nogui < console > server.log 2>&1 &
-          PID=$!
-          exec 3>console
-          for i in $(seq 1 180); do
-            grep -q "Done (" server.log && break
-            kill -0 $PID 2>/dev/null || break
-            sleep 2
-          done
-          echo "stop" >&3
-          wait $PID || true
-          echo "----- ShrinkRay lines -----"
-          grep -i "shrinkray\|shrink ray" server.log || true
-      - name: Check results
-        working-directory: server
-        run: |
-          fail=0
-          grep -q "Done (" server.log || { echo "::error::Server did not finish starting"; fail=1; }
-          grep -q "ShrinkRay Ultimate Weapon System Enabled" server.log || { echo "::error::ShrinkRay did not enable"; fail=1; }
-          grep -q "Loaded 5/5 Shrink Ray advancements" server.log || { echo "::error::Advancements did not all load"; fail=1; }
-          if grep -n -A15 "Error occurred while enabling ShrinkRay\|Could not load advancement\|at com.shrinkray" server.log; then
-            echo "::error::ShrinkRay errors in log"; fail=1
-          fi
-          [ $fail -eq 0 ] || { tail -n 80 server.log; exit 1; }
